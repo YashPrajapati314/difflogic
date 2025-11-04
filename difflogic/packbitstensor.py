@@ -1,4 +1,7 @@
-import difflogic_cuda
+try:
+    import difflogic_cuda
+except (ModuleNotFoundError, ImportError):
+    difflogic_cuda = None
 import torch
 import numpy as np
 

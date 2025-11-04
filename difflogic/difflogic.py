@@ -1,5 +1,8 @@
 import torch
-import difflogic_cuda
+try:
+    import difflogic_cuda
+except (ModuleNotFoundError, ImportError):
+    difflogic_cuda = None
 import numpy as np
 from .functional import bin_op_s, get_unique_connections, GradFactor
 from .packbitstensor import PackBitsTensor
@@ -138,6 +141,8 @@ class LogicLayer(torch.nn.Module):
         :param x:
         :return:
         """
+        if difflogic_cuda is None:
+            raise NotImplementedError('forward_cuda_eval is not implemented for CPU.')
         assert not self.training
         assert isinstance(x, PackBitsTensor)
         assert x.t.shape[0] == self.in_dim, (x.t.shape, self.in_dim)
@@ -205,11 +210,15 @@ class GroupSum(torch.nn.Module):
 class LogicLayerCudaFunction(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, a, b, w, given_x_indices_of_y_start, given_x_indices_of_y):
+        if difflogic_cuda is None:
+            raise NotImplementedError('LogicLayerCudaFunction is not implemented for CPU.')
         ctx.save_for_backward(x, a, b, w, given_x_indices_of_y_start, given_x_indices_of_y)
         return difflogic_cuda.forward(x, a, b, w)
 
     @staticmethod
     def backward(ctx, grad_y):
+        if difflogic_cuda is None:
+            raise NotImplementedError('LogicLayerCudaFunction is not implemented for CPU.')
         x, a, b, w, given_x_indices_of_y_start, given_x_indices_of_y = ctx.saved_tensors
         grad_y = grad_y.contiguous()
 
