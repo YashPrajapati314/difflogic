@@ -117,8 +117,7 @@ def num_classes_of_dataset(dataset):
 
 
 def get_model(args):
-    device = 'cpu' if args.implementation == 'python' else 'cuda'
-    llkw = dict(grad_factor=args.grad_factor, connections=args.connections, device=device)
+    llkw = dict(grad_factor=args.grad_factor, connections=args.connections, implementation=args.implementation)
 
     in_dim = input_dim_of_dataset(args.dataset)
     class_count = num_classes_of_dataset(args.dataset)
@@ -139,7 +138,7 @@ def get_model(args):
 
         model = torch.nn.Sequential(
             *logic_layers,
-            GroupSum(class_count, args.tau, device=device)
+            GroupSum(class_count, args.tau)
         )
 
     ####################################################################################################################

@@ -2,16 +2,14 @@ import argparse
 import torch
 from torch import nn
 from tqdm import tqdm
-from experiments import mnist_dataset
-from difflogic.conv import Conv, Logic
-from difflogic.difflogic import GroupSum
+import mnist_dataset
+from difflogic import Conv, Logic, GroupSum
 
 
 class MNISTArchitecture(nn.Module):
     def __init__(self, *,
                  model_scale: int = 16,
-                 temperature: float = 6.5,
-                 device: str = 'cpu'):
+                 temperature: float = 6.5):
         super().__init__()
 
         self.output_gate_factor = 2 if model_scale <= 64 else 1
@@ -30,7 +28,7 @@ class MNISTArchitecture(nn.Module):
             Logic(in_dim=81 * self.k, out_dim=1280 * self.k * self.output_gate_factor),
             Logic(in_dim=1280 * self.k * self.output_gate_factor, out_dim=640 * self.k * self.output_gate_factor),
             Logic(in_dim=640 * self.k * self.output_gate_factor, out_dim=320 * self.k * self.output_gate_factor),
-            GroupSum(k=10, tau=self.temperature, device=device)
+            GroupSum(k=10, tau=self.temperature)
         )
 
         self.loss_function = torch.nn.CrossEntropyLoss()
@@ -48,10 +46,10 @@ def main(args):
     train_set = mnist_dataset.MNIST('./data-mnist', train=True, download=True, remove_border=False)
     test_set = mnist_dataset.MNIST('./data-mnist', train=False, remove_border=False)
 
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=4)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=False, pin_memory=True, drop_last=True)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=0)
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=False, pin_memory=True, drop_last=True, num_workers=0)
 
-    model = MNISTArchitecture(model_scale=args.model_scale, temperature=args.temperature, device=device).to(device)
+    model = MNISTArchitecture(model_scale=args.model_scale, temperature=args.temperature).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     for epoch in range(args.epochs):
