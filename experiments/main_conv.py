@@ -2,8 +2,9 @@ import argparse
 import torch
 from torch import nn
 from tqdm import tqdm
-import mnist_dataset
-from difflogic import Conv, Logic, GroupSum
+from experiments import mnist_dataset
+from difflogic.conv import Conv, Logic
+from difflogic.difflogic import GroupSum
 
 
 class MNISTArchitecture(nn.Module):
