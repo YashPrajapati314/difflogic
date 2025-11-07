@@ -117,7 +117,7 @@ def num_classes_of_dataset(dataset):
 
 
 def get_model(args):
-    llkw = dict(grad_factor=args.grad_factor, connections=args.connections)
+    llkw = dict(grad_factor=args.grad_factor, connections=args.connections, implementation=args.implementation)
 
     in_dim = input_dim_of_dataset(args.dataset)
     class_count = num_classes_of_dataset(args.dataset)
@@ -158,7 +158,7 @@ def get_model(args):
             'total_num_weights': total_num_weights,
         })
 
-    model = model.to('cuda')
+    model = model.to(device)
 
     print(model)
     if args.experiment_id is not None:
@@ -182,12 +182,13 @@ def train(model, x, y, loss_fn, optimizer):
 
 
 def eval(model, loader, mode):
+    device = next(model.parameters()).device
     orig_mode = model.training
     with torch.no_grad():
         model.train(mode=mode)
         res = np.mean(
             [
-                (model(x.to('cuda').round()).argmax(-1) == y.to('cuda')).to(torch.float32).mean().item()
+                (model(x.to(device).round()).argmax(-1) == y.to(device)).to(torch.float32).mean().item()
                 for x, y in loader
             ]
         )
@@ -196,13 +197,14 @@ def eval(model, loader, mode):
 
 
 def packbits_eval(model, loader):
+    device = next(model.parameters()).device
     orig_mode = model.training
     with torch.no_grad():
         model.eval()
         res = np.mean(
             [
-                (model(PackBitsTensor(x.to('cuda').reshape(x.shape[0], -1).round().bool())).argmax(-1) == y.to(
-                    'cuda')).to(torch.float32).mean().item()
+                (model(PackBitsTensor(x.to(device).reshape(x.shape[0], -1).round().bool())).argmax(-1) == y.to(
+                    device)).to(torch.float32).mean().item()
                 for x, y in loader
             ]
         )
@@ -273,6 +275,7 @@ if __name__ == '__main__':
 
     train_loader, validation_loader, test_loader = load_dataset(args)
     model, loss_fn, optim = get_model(args)
+    device = 'cpu' if args.implementation == 'python' else 'cuda'
 
     ####################################################################################################################
 
@@ -283,8 +286,8 @@ if __name__ == '__main__':
             desc='iteration',
             total=args.num_iterations,
     ):
-        x = x.to(BITS_TO_TORCH_FLOATING_POINT_TYPE[args.training_bit_count]).to('cuda')
-        y = y.to('cuda')
+        x = x.to(BITS_TO_TORCH_FLOATING_POINT_TYPE[args.training_bit_count]).to(device)
+        y = y.to(device)
 
         loss = train(model, x, y, loss_fn, optim)
 

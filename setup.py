@@ -1,8 +1,18 @@
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
+import torch
 
 with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
+
+ext_modules = []
+if torch.cuda.is_available():
+    ext_modules.append(
+        CUDAExtension('difflogic_cuda', [
+            'difflogic/cuda/difflogic.cpp',
+            'difflogic/cuda/difflogic_kernel.cu',
+        ], extra_compile_args={'nvcc': ['-lineinfo']})
+    )
 
 setup(
     name='difflogic',
@@ -25,10 +35,7 @@ setup(
     ],
     package_dir={'difflogic': 'difflogic'},
     packages=['difflogic'],
-    ext_modules=[CUDAExtension('difflogic_cuda', [
-        'difflogic/cuda/difflogic.cpp',
-        'difflogic/cuda/difflogic_kernel.cu',
-    ], extra_compile_args={'nvcc': ['-lineinfo']})],
+    ext_modules=ext_modules,
     cmdclass={'build_ext': BuildExtension},
     python_requires='>=3.6',
     install_requires=[
