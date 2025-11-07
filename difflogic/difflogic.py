@@ -19,24 +19,21 @@ class LogicLayer(torch.nn.Module):
             self,
             in_dim: int,
             out_dim: int,
-            device: str = 'cuda',
             grad_factor: float = 1.,
-            implementation: str = None,
+            implementation: str = 'python',
             connections: str = 'random',
     ):
         """
         :param in_dim:      input dimensionality of the layer
         :param out_dim:     output dimensionality of the layer
-        :param device:      device (options: 'cuda' / 'cpu')
         :param grad_factor: for deep models (>6 layers), the grad_factor should be increased (e.g., 2) to avoid vanishing gradients
         :param implementation: implementation to use (options: 'cuda' / 'python'). cuda is around 100x faster than python
         :param connections: method for initializing the connectivity of the logic gate net
         """
         super().__init__()
-        self.weights = torch.nn.parameter.Parameter(torch.randn(out_dim, 16, device=device))
+        self.weights = torch.nn.parameter.Parameter(torch.randn(out_dim, 16))
         self.in_dim = in_dim
         self.out_dim = out_dim
-        self.device = device
         self.grad_factor = grad_factor
 
         """
@@ -46,15 +43,11 @@ class LogicLayer(torch.nn.Module):
         2. To provide a CPU implementation of differentiable logic gate networks 
         """
         self.implementation = implementation
-        if self.implementation is None and device == 'cuda':
-            self.implementation = 'cuda'
-        elif self.implementation is None and device == 'cpu':
-            self.implementation = 'python'
         assert self.implementation in ['cuda', 'python'], self.implementation
 
         self.connections = connections
         assert self.connections in ['random', 'unique'], self.connections
-        self.indices = self.get_connections(self.connections, device)
+        self.indices = self.get_connections(self.connections)
 
         if self.implementation == 'cuda':
             """
@@ -67,9 +60,9 @@ class LogicLayer(torch.nn.Module):
                 given_x_indices_of_y[indices_0_np[y]].append(y)
                 given_x_indices_of_y[indices_1_np[y]].append(y)
             self.given_x_indices_of_y_start = torch.tensor(
-                np.array([0] + [len(g) for g in given_x_indices_of_y]).cumsum(), device=device, dtype=torch.int64)
+                np.array([0] + [len(g) for g in given_x_indices_of_y]).cumsum(), device=self.weights.device, dtype=torch.int64)
             self.given_x_indices_of_y = torch.tensor(
-                [item for sublist in given_x_indices_of_y for item in sublist], dtype=torch.int64, device=device)
+                [item for sublist in given_x_indices_of_y for item in sublist], dtype=torch.int64, device=self.weights.device)
 
         self.num_neurons = out_dim
         self.num_weights = out_dim
@@ -154,7 +147,7 @@ class LogicLayer(torch.nn.Module):
     def extra_repr(self):
         return '{}, {}, {}'.format(self.in_dim, self.out_dim, 'train' if self.training else 'eval')
 
-    def get_connections(self, connections, device='cuda'):
+    def get_connections(self, connections):
         assert self.out_dim * 2 >= self.in_dim, 'The number of neurons ({}) must not be smaller than half of the ' \
                                                 'number of inputs ({}) because otherwise not all inputs could be ' \
                                                 'used or considered.'.format(self.out_dim, self.in_dim)
@@ -164,10 +157,9 @@ class LogicLayer(torch.nn.Module):
             c = c.reshape(2, self.out_dim)
             a, b = c[0], c[1]
             a, b = a.to(torch.int64), b.to(torch.int64)
-            a, b = a.to(device), b.to(device)
             return a, b
         elif connections == 'unique':
-            return get_unique_connections(self.in_dim, self.out_dim, device)
+            return get_unique_connections(self.in_dim, self.out_dim)
         else:
             raise ValueError(connections)
 
@@ -179,17 +171,15 @@ class GroupSum(torch.nn.Module):
     """
     The GroupSum module.
     """
-    def __init__(self, k: int, tau: float = 1., device='cuda'):
+    def __init__(self, k: int, tau: float = 1.):
         """
 
         :param k: number of intended real valued outputs, e.g., number of classes
         :param tau: the (softmax) temperature tau. The summed outputs are divided by tau.
-        :param device:
         """
         super().__init__()
         self.k = k
         self.tau = tau
-        self.device = device
 
     def forward(self, x):
         if isinstance(x, PackBitsTensor):
