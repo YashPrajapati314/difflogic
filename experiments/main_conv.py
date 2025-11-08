@@ -2,7 +2,7 @@ import argparse
 import torch
 from torch import nn
 from tqdm import tqdm
-from experiments import mnist_dataset
+import mnist_dataset
 from difflogic import Conv, Logic, GroupSum
 
 
@@ -43,11 +43,12 @@ class MNISTArchitecture(nn.Module):
 
 def main(args):
     device = torch.device(args.device)
+    pin_memory = (args.device == 'cuda')
     train_set = mnist_dataset.MNIST('./data-mnist', train=True, download=True, remove_border=False)
     test_set = mnist_dataset.MNIST('./data-mnist', train=False, remove_border=False)
 
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=0)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=False, pin_memory=True, drop_last=True, num_workers=0)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, shuffle=True, pin_memory=pin_memory, drop_last=True, num_workers=0)
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=False, pin_memory=pin_memory, drop_last=True, num_workers=0)
 
     model = MNISTArchitecture(model_scale=args.model_scale, temperature=args.temperature).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)

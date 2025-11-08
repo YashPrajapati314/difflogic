@@ -60,9 +60,9 @@ class LogicLayer(torch.nn.Module):
                 given_x_indices_of_y[indices_0_np[y]].append(y)
                 given_x_indices_of_y[indices_1_np[y]].append(y)
             self.given_x_indices_of_y_start = torch.tensor(
-                np.array([0] + [len(g) for g in given_x_indices_of_y]).cumsum(), device=self.weights.device, dtype=torch.int64)
+                np.array([0] + [len(g) for g in given_x_indices_of_y]).cumsum(), device=device, dtype=torch.int64)
             self.given_x_indices_of_y = torch.tensor(
-                [item for sublist in given_x_indices_of_y for item in sublist], dtype=torch.int64, device=self.weights.device)
+                [item for sublist in given_x_indices_of_y for item in sublist], dtype=torch.int64, device=device)
 
         self.num_neurons = out_dim
         self.num_weights = out_dim
