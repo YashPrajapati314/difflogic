@@ -614,7 +614,7 @@ std::tuple<torch::Tensor, int> tensor_packbits_cuda(
     }();
     auto b = torch::zeros({out_size, batch_out_size}, torch::dtype(dispatch_type).device(t.device()));
 
-    AT_DISPATCH_INTEGRAL_TYPES(b.type(), "tensor_packbits_cuda_kernel", ([&] {
+    AT_DISPATCH_INTEGRAL_TYPES(b.scalar_type(), "tensor_packbits_cuda_kernel", ([&] {
                                    tensor_packbits_cuda_kernel<scalar_t><<<blocks_per_grid, threads_per_block>>>(t.packed_accessor32<bool, 2, torch::RestrictPtrTraits>(),
                                                                                                                             b.packed_accessor32<scalar_t, 2, torch::RestrictPtrTraits>());
                                }));
@@ -654,7 +654,8 @@ __global__ void groupbitsum_kernel(
             int res = 0;
             const auto class_size = b.size(0) / t.size(0);
             for (int i = 0; i < class_size; ++i) {
-                const scalar_t_ val = {val.signed_scalar = b[row * class_size + i][col / bit_count]};
+                scalar_t_ val;
+                val.signed_scalar = b[row * class_size + i][col / bit_count];
                 const unsigned_scalar_t bit_mask = static_cast<unsigned_scalar_t>(1) << static_cast<uint32_t>(col % bit_count);
                 res += !!(val.unsigned_scalar & bit_mask);
             }
@@ -687,7 +688,7 @@ torch::Tensor groupbitsum(
 
     auto t = torch::zeros({out_size, batch_out_size}, torch::dtype(torch::kInt32).device(b.device()));
 
-    AT_DISPATCH_INTEGRAL_TYPES(b.type(), "groupbitsum_kernel", ([&] {
+    AT_DISPATCH_INTEGRAL_TYPES(b.scalar_type(), "groupbitsum_kernel", ([&] {
                                    groupbitsum_kernel<scalar_t><<<blocks_per_grid, threads_per_block>>>(
                                         b.packed_accessor32<scalar_t, 2, torch::RestrictPtrTraits>(),
                                         t.packed_accessor32<int, 2, torch::RestrictPtrTraits>()

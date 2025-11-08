@@ -2,7 +2,7 @@ import argparse
 import torch
 from torch import nn
 from tqdm import tqdm
-from experiments import mnist_dataset
+import mnist_dataset
 from difflogic import Conv, Logic, GroupSum
 
 
