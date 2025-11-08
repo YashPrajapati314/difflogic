@@ -654,7 +654,7 @@ __global__ void groupbitsum_kernel(
             int res = 0;
             const auto class_size = b.size(0) / t.size(0);
             for (int i = 0; i < class_size; ++i) {
-                const scalar_t_ val = {.signed_scalar = b[row * class_size + i][col / bit_count]};
+                const scalar_t_ val = {val.signed_scalar = b[row * class_size + i][col / bit_count]};
                 const unsigned_scalar_t bit_mask = static_cast<unsigned_scalar_t>(1) << static_cast<uint32_t>(col % bit_count);
                 res += !!(val.unsigned_scalar & bit_mask);
             }
