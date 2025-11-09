@@ -4,3 +4,5 @@ torch
 torchvision
 difflogic
 einops
+matplotlib
+Pillow
