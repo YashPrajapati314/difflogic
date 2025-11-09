@@ -8,7 +8,7 @@ import torch
 import torchvision
 from tqdm import tqdm
 
-from results_json import ResultsJSON
+from experiments.results_json import ResultsJSON
 
 import mnist_dataset
 import uci_datasets

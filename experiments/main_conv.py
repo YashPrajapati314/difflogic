@@ -4,6 +4,9 @@ from torch import nn
 from tqdm import tqdm
 from experiments import mnist_dataset
 from difflogic import Conv, Logic, GroupSum
+import os
+from difflogic import CompiledLogicNet
+from experiments.results_json import ResultsJSON
 
 
 class MNISTArchitecture(nn.Module):
@@ -42,6 +45,11 @@ class MNISTArchitecture(nn.Module):
 
 
 def main(args):
+    if args.experiment_id is not None:
+        assert 520_000 <= args.experiment_id < 530_000, args.experiment_id
+        results = ResultsJSON(eid=args.experiment_id, path='./results/')
+        results.store_args(args)
+        
     device = torch.device(args.device)
     pin_memory = (args.device == 'cuda')
     train_set = mnist_dataset.MNIST('./data-mnist', train=True, download=True, remove_border=False)
@@ -75,6 +83,51 @@ def main(args):
                 correct += (predicted == y).sum().item()
 
         print(f'Epoch {epoch}: Test Accuracy: {100 * correct / total}%')
+        
+    if args.compile_model:
+        print('\n' + '='*80)
+        print(' Converting the model to C code and compiling it...')
+        print('='*80)
+
+        for opt_level in range(4):
+
+            for num_bits in [
+                # 8,
+                # 16,
+                # 32,
+                64
+            ]:
+                os.makedirs('lib', exist_ok=True)
+                save_lib_path = 'lib/{:08d}_{}.so'.format(
+                    args.experiment_id if args.experiment_id is not None else 0, num_bits
+                )
+
+                compiled_model = CompiledLogicNet(
+                    model=model.model,
+                    num_bits=num_bits,
+                    cpu_compiler='gcc',
+                    # cpu_compiler='clang',
+                    verbose=True,
+                )
+
+                compiled_model.compile(
+                    opt_level=1 if args.num_layers * args.num_neurons < 50_000 else 0,
+                    save_lib_path=save_lib_path,
+                    verbose=True
+                )
+
+                correct, total = 0, 0
+                with torch.no_grad():
+                    for (data, labels) in torch.utils.data.DataLoader(test_loader.dataset, batch_size=int(1e6), shuffle=False):
+                        data = torch.nn.Flatten()(data).bool().numpy()
+
+                        output = compiled_model(data, verbose=True)
+
+                        correct += (output.argmax(-1) == labels).float().sum()
+                        total += output.shape[0]
+
+                acc3 = correct / total
+                print('COMPILED MODEL', num_bits, acc3)
 
 
 if __name__ == '__main__':
@@ -85,5 +138,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--device', type=str, default='cpu')
+    parser.add_argument('--compile_model', action='store_true', help='Compile the final model with C for CPU.')
+    parser.add_argument('-eid', '--experiment_id', type=int, default=None)
     args = parser.parse_args()
     main(args)
