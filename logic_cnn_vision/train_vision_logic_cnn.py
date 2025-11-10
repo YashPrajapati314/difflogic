@@ -109,19 +109,49 @@ def iou_loss(y_true, y_pred):
 class LocalizerLogicCNN(nn.Module):
     def __init__(self, model_scale=16):
         super().__init__()
+        
         self.k = model_scale
+        
+        # self.model = nn.Sequential(
+        #     Conv(in_channels=1, out_channels=self.k, kernel_size=3, padding=1, stride=1, depth=3),
+        #     nn.MaxPool2d(kernel_size=2, stride=2),
+        #     Conv(in_channels=self.k, out_channels=2 * self.k, kernel_size=3, padding=1, stride=1, depth=3),
+        #     nn.MaxPool2d(kernel_size=2, stride=2),
+        #     Conv(in_channels=2 * self.k, out_channels=4 * self.k, kernel_size=3, padding=1, stride=1, depth=3),
+        #     nn.Flatten(),
+        #     Logic(in_dim=7 * 7 * 4 * self.k, out_dim=64),
+        #     Logic(in_dim=64, out_dim=32),
+        #     nn.Linear(32, 4),
+        #     nn.Sigmoid()
+        # )
+        
         self.model = nn.Sequential(
-            Conv(in_channels=1, out_channels=self.k, kernel_size=3, padding=1, stride=1, depth=3),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            Conv(in_channels=self.k, out_channels=2 * self.k, kernel_size=3, padding=1, stride=1, depth=3),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            Conv(in_channels=2 * self.k, out_channels=4 * self.k, kernel_size=3, padding=1, stride=1, depth=3),
+            Conv(in_channels=1, out_channels=self.k, kernel_size=3, padding=1, stride=1, depth=2),
+            nn.BatchNorm2d(self.k),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+
+            Conv(in_channels=self.k, out_channels=2*self.k, kernel_size=3, padding=1, stride=1, depth=2),
+            nn.BatchNorm2d(2*self.k),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+
+            Conv(in_channels=2*self.k, out_channels=4*self.k, kernel_size=3, padding=1, stride=1, depth=1),
+            nn.BatchNorm2d(4*self.k),
+            nn.ReLU(inplace=True),
+
+            nn.AdaptiveAvgPool2d((1,1)),
             nn.Flatten(),
-            Logic(in_dim=7 * 7 * 4 * self.k, out_dim=64),
-            Logic(in_dim=64, out_dim=32),
-            nn.Linear(32, 4),
+
+            nn.Linear(4*self.k, 128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2),
+            nn.Linear(128, 64),
+            nn.ReLU(inplace=True),
+            nn.Linear(64, 4),
             nn.Sigmoid()
         )
+
 
     def forward(self, x):
         return self.model(x)

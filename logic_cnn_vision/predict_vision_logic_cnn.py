@@ -1,4 +1,5 @@
 import os
+import time
 import argparse
 from pathlib import Path
 from PIL import Image
@@ -6,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import torch
-from train_vision_logic_cnn import LocalizerLogicCNN, parse_filename_bbox
+from logic_cnn_vision.train_vision_logic_cnn import LocalizerLogicCNN, parse_filename_bbox
 
 IMAGE_SIZE = 28
 
@@ -65,7 +66,7 @@ def main():
     model.eval()
 
     with torch.no_grad():
-        pred = model(X.to(device))
+        pred = model(X.to(device))        
     pred_box = pred[0].cpu().numpy()
     print('Predicted (normalized x,y,h,w):', pred_box)
     visualize_prediction(X[0], pred_box, gt_box=gt)
